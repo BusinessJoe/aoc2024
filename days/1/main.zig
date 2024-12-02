@@ -1,5 +1,8 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 const parseInt = std.fmt.parseInt;
+const test_allocator = std.testing.allocator;
+const expect = std.testing.expect;
 
 fn nextLine(reader: anytype, buffer: []u8) !?[]const u8 {
     const line = (try reader.readUntilDelimiterOrEof(
@@ -14,11 +17,9 @@ fn nextLine(reader: anytype, buffer: []u8) !?[]const u8 {
     }
 }
 
-fn parseLists(reader: anytype) !struct { std.ArrayList(u32), std.ArrayList(u32) } {
-    const ally = std.heap.page_allocator;
-
-    var l1 = std.ArrayList(u32).init(ally);
-    var l2 = std.ArrayList(u32).init(ally);
+fn parseLists(allocator: Allocator, reader: anytype) !struct { std.ArrayList(u32), std.ArrayList(u32) } {
+    var l1 = std.ArrayList(u32).init(allocator);
+    var l2 = std.ArrayList(u32).init(allocator);
 
     var buffer: [100]u8 = undefined;
     while (try nextLine(reader, &buffer)) |line| {
@@ -46,12 +47,11 @@ fn aoc1p1(l1: []u32, l2: []u32) u32 {
     return total;
 }
 
-fn aoc1p2(l1: []u32, l2: []u32) !u32 {
-    const ally = std.heap.page_allocator;
+fn aoc1p2(allocator: Allocator, l1: []u32, l2: []u32) !u32 {
     const max = @max(l1[l1.len - 1], l2[l2.len - 1]);
 
-    const counts = try ally.alloc(u32, max + 1);
-    defer ally.free(counts);
+    const counts = try allocator.alloc(u32, max + 1);
+    defer allocator.free(counts);
 
     @memset(counts, 0);
 
@@ -66,15 +66,39 @@ fn aoc1p2(l1: []u32, l2: []u32) !u32 {
     return total;
 }
 
-pub fn main() !void {
-    const stdin = std.io.getStdIn();
-    const stdout = std.io.getStdOut();
+fn aoc1(allocator: Allocator, reader: anytype) !struct { u32, u32 } {
+    const lists = try parseLists(allocator, reader);
+    defer lists[0].deinit();
+    defer lists[1].deinit();
 
-    const lists = try parseLists(stdin.reader());
     std.mem.sort(u32, lists[0].items, {}, comptime std.sort.asc(u32));
     std.mem.sort(u32, lists[1].items, {}, comptime std.sort.asc(u32));
 
     const out1 = aoc1p1(lists[0].items, lists[1].items);
-    const out2 = try aoc1p2(lists[0].items, lists[1].items);
-    try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ out1, out2 });
+    const out2 = try aoc1p2(allocator, lists[0].items, lists[1].items);
+
+    return .{ out1, out2 };
+}
+
+pub fn main() !void {
+    const stdin = std.io.getStdIn();
+    const stdout = std.io.getStdOut();
+    const allocator = std.heap.page_allocator;
+
+    const answers = aoc1(allocator, stdin.reader());
+    try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers[0], answers[1] });
+}
+
+test "both parts with given example" {
+    var list = std.ArrayList(u8).init(test_allocator);
+    defer list.deinit();
+
+    try list.appendSlice("3   4\n4   3\n2   5\n1   3\n3   9\n3   3");
+
+    var stream = std.io.fixedBufferStream(list.items);
+
+    const answers = try aoc1(test_allocator, stream.reader());
+
+    try expect(answers[0] == 11);
+    try expect(answers[1] == 31);
 }
