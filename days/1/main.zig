@@ -83,9 +83,10 @@ fn aoc1(allocator: Allocator, reader: anytype) !struct { u32, u32 } {
 pub fn main() !void {
     const stdin = std.io.getStdIn();
     const stdout = std.io.getStdOut();
-    const allocator = std.heap.page_allocator;
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
 
-    const answers = aoc1(allocator, stdin.reader());
+    const answers = try aoc1(allocator, stdin.reader());
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers[0], answers[1] });
 }
 
