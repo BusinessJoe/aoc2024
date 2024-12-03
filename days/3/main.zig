@@ -93,54 +93,60 @@ const Parser = struct {
     tokenizer: Tokenizer,
     enabled: bool = true,
     fn next(self: *Parser) ?Mul {
-        var step: u8 = 0;
+        // Basic state machine with 5 states:
+        // 0: expecting mul(
+        // 1: expecting left num
+        // 2: expecting comma
+        // 3: expecting right num
+        // 4: expecting )
+        var state: u8 = 0;
         var left: u64 = 0;
         var right: u64 = 0;
 
         while (self.tokenizer.next()) |token| {
             if (token == Token.enable) {
                 self.enabled = token.enable;
-                step = 0;
+                state = 0;
                 continue;
             }
 
-            if (step == 0) {
+            if (state == 0) {
                 if (token == Token.mul_start) {
-                    step += 1;
+                    state += 1;
                 } else {
-                    step = 0;
+                    state = 0;
                 }
-            } else if (step == 1) {
+            } else if (state == 1) {
                 if (token == Token.num) {
                     left = token.num;
-                    step += 1;
+                    state += 1;
                 } else {
-                    step = 0;
+                    state = 0;
                 }
-            } else if (step == 2) {
+            } else if (state == 2) {
                 if (token == Token.comma) {
-                    step += 1;
+                    state += 1;
                 } else {
-                    step = 0;
+                    state = 0;
                 }
-            } else if (step == 3) {
+            } else if (state == 3) {
                 if (token == Token.num) {
                     right = token.num;
-                    step += 1;
+                    state += 1;
                 } else {
-                    step = 0;
+                    state = 0;
                 }
-            } else if (step == 4) {
+            } else if (state == 4) {
                 if (token == Token.mul_end) {
                     // Done parsing a mul
                     return Mul{ .left = left, .right = right, .enabled = self.enabled };
                 } else {
-                    step = 0;
+                    state = 0;
                 }
             }
 
             if (token == Token.mul_start) {
-                step = 1;
+                state = 1;
             }
         }
 
