@@ -240,6 +240,8 @@ test "test parser" {
         const actual = p.next().?;
         try T.expectEqual(actual, mul);
     }
+
+    try T.expectEqual(p.next(), null);
 }
 
 test "test parser do / don't" {
@@ -258,20 +260,6 @@ test "test parser do / don't" {
         const actual = p.next().?;
         try T.expectEqual(actual, mul);
     }
+
+    try T.expectEqual(p.next(), null);
 }
-
-// test "both parts with given example" {
-//     var test_allocator = std.testing.allocator;
-
-//     var list = std.ArrayList(u8).init(test_allocator);
-//     defer list.deinit();
-
-//     try list.appendSlice("7 6 4 2 1\n1 2 7 8 9\n9 7 6 2 1\n1 3 2 4 5\n8 6 4 4 1\n1 3 6 7 9");
-
-//     var stream = std.io.fixedBufferStream(list.items);
-
-//     const answers = try aoc2(&test_allocator, stream.reader());
-
-//     try expect(answers[0] == 2);
-//     try expect(answers[1] == 4);
-// }
