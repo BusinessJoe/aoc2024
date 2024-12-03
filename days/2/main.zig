@@ -38,33 +38,17 @@ fn reportIsSafe(level: []u32) bool {
     return true;
 }
 
-fn reportWithSingleRemovalIsSafe(level: []u32, removed: u64) bool {
-    const f = if (0 >= removed) level[1] else level[0];
-    const s = if (1 >= removed) level[2] else level[1];
-    const isIncreasing = f < s;
-    for (0..level.len - 2) |i| {
-        const first = if (i >= removed) level[i + 1] else level[i];
-        const second = if (i + 1 >= removed) level[i + 2] else level[i + 1];
+fn reportWithRemovalIsSafe(allocator: *Allocator, level: []u32) !bool {
+    var small_level = try allocator.alloc(u32, level.len - 1);
 
-        if ((first < second) != isIncreasing) {
-            return false;
-        }
-        var diff: u32 = undefined;
-        if (isIncreasing) {
-            diff = second - first;
-        } else {
-            diff = first - second;
-        }
-        if (diff == 0 or diff > 3) {
-            return false;
-        }
-    }
-    return true;
-}
-
-fn reportWithRemovalIsSafe(level: []u32) bool {
     for (0..level.len) |removed| {
-        if (reportWithSingleRemovalIsSafe(level, removed)) {
+        for (0..removed) |i| {
+            small_level[i] = level[i];
+        }
+        for (removed + 1..level.len) |i| {
+            small_level[i - 1] = level[i];
+        }
+        if (reportIsSafe(small_level)) {
             return true;
         }
     }
@@ -90,7 +74,7 @@ fn aoc2(allocator: *Allocator, reader: anytype) !struct { u32, u32 } {
         if (reportIsSafe(levels.items)) {
             total += 1;
             total2 += 1;
-        } else if (reportWithRemovalIsSafe(levels.items)) {
+        } else if (try reportWithRemovalIsSafe(allocator, levels.items)) {
             total2 += 1;
         }
     }
