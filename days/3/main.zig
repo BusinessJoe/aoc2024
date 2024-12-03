@@ -1,8 +1,5 @@
 const std = @import("std");
-const Allocator = std.mem.Allocator;
-const parseInt = std.fmt.parseInt;
 const T = std.testing;
-const expect = std.testing.expect;
 
 const TokenType = enum { num, comma, mul_start, mul_end, junk, enable };
 const Token = union(TokenType) { num: u64, comma, mul_start, mul_end, junk, enable: bool };
