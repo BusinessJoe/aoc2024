@@ -61,13 +61,6 @@ const Tokenizer = struct {
         return Token.junk;
     }
 
-    fn peek(self: *Tokenizer) ?Token {
-        const old = self.idx;
-        const t = self.next();
-        self.idx = old;
-        return t;
-    }
-
     fn nextNum(self: *Tokenizer) Token {
         var num: u64 = 0;
 
