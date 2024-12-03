@@ -39,6 +39,7 @@ fn reportIsSafe(level: []u32) bool {
 
 fn reportWithRemovalIsSafe(allocator: *Allocator, level: []u32) !bool {
     var small_level = try allocator.alloc(u32, level.len - 1);
+    defer allocator.free(small_level);
 
     for (0..level.len) |removed| {
         for (0..removed) |i| {
