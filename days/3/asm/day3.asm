@@ -1,12 +1,9 @@
 SECTION .data
 multxt:         db    "mul("
-mullen: equ $ - multxt
-eqmsg:  db "equal", 10, 0
-neqmsg:  db "not equal", 10, 0
+dotxt:          db    "do()"
+donttxt:        db    "don't()"
 newline: db 10
 message db "Value = %d", 10, 0
-; dotxt:          db    "do()"
-; donttxt:        db    "don't()"
 
 SECTION .bss
 sinput:     resb 0x8000  ; 32 KB for problem input
@@ -58,44 +55,6 @@ print:
     call    strlen
     mov     rdx, rax    ; Put length of string into rdx
 
-    mov     rdi, 1      ; stdin
-    mov     rax, 1      ; write
-    syscall
-
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-
-    ret
-
-print_w_len:
-    push rax
-    push rdi
-    push rsi
-    push rdx
-
-    mov     rsi, rax    ; string arg in rax
-    mov     rdx, rdi    ; length arg in rdi
-    mov     rdi, 1      ; stdin
-    mov     rax, 1      ; write
-    syscall
-
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-
-    ret
-
-print_nl:
-    push rax
-    push rdi
-    push rsi
-    push rdx
-
-    mov     rsi, newline
-    mov     rdx, 1      ; length 1
     mov     rdi, 1      ; stdin
     mov     rax, 1      ; write
     syscall
@@ -161,36 +120,65 @@ parse_num:
 
 main:
     call readinput      ; reads stdin into sinput
-    ; mov rax, sinput
-    ; call print
 
     mov rbx, 1          ; enabled = true
     mov rbp, 0          ; state = 0
     mov r12, 0          ; idx = 0
     mov r13, 0          ; total = 0
-    ; r14, r15 used for left/right number value
+    mov r14, 0          ; total2 = 0
 
 .check_tok:
     ; Make sure we stay in bounds?
     cmp BYTE [sinput + r12*1], 0
     je .finished
 
-    ; mov rax, sinput
-    ; add rax, r12
-    ; mov rdi, 4
-    ; call print_w_len
-    ; call print_nl
+    ; check DO
+    mov eax, [dotxt]
+    mov edi, [sinput + r12*1]
+    cmp edi, eax
+    jne .check_dont
+    mov rbx, 1
+    add r12, 4
+    mov rbp, 0
+    jmp .check_tok
+.check_dont:
+    mov eax, [donttxt]
+    mov edi, [sinput + r12*1]
+    cmp edi, eax
+    jne .mul
+    ; check for t
+    mov rdi, r12
+    add rdi, 4
+    mov al, "t"
+    mov dil, [sinput + rdi*1]
+    cmp al, dil
+    jne .mul
+    ; check for (
+    mov rdi, r12
+    add rdi, 5
+    mov al, "("
+    mov dil, [sinput + rdi*1]
+    cmp al, dil
+    jne .mul
+    ; check for )
+    mov rdi, r12
+    add rdi, 6
+    mov al, ")"
+    mov dil, [sinput + rdi*1]
+    cmp al, dil
+    jne .mul
+    mov rbx, 0
+    add r12, 7
+    mov rbp, 0
+    jmp .check_tok
 
+.mul:
     ; We can always start by checking for mul
     ; MUL START
     mov eax, [multxt]
     mov edi, [sinput + r12*1]
     cmp edi, eax
     jne .check_left
-
-; ; debug
-; mov rax, eqmsg
-; call print
 
     mov rbp, 1      ; state = 1
     add r12, 4      ; idx += 4
@@ -203,7 +191,9 @@ main:
     call parse_num  ; parse num into rax, set to 1000 if not a num
     cmp rax, 1000
     je .reset_state
-    mov r14, rax    ; store parsed num in left
+
+    push rax        ; store parsed num in stack
+
     mov rbp, 2      ; state = 2
     jmp .check_tok
 
@@ -224,7 +214,9 @@ main:
     call parse_num
     cmp rax, 1000
     je .reset_state
-    mov r15, rax    ; store parsed num in right
+
+    push rax        ; store parsed num in stack
+
     mov rbp, 4      ; state = 4
     jmp .check_tok
 
@@ -234,16 +226,23 @@ main:
 
     cmp byte [sinput + r12*1], ")"
     jne .reset_state
-.fuck:
-    mov rax, r14
-    call print_int
-    mov rax, r15
-    call print_int
-    call print_nl
-    mov rax, r14
-    mul r15         ; rax = r14 * r15
+
+    ; pop left and right nums from stack, multiply in rax
+    pop rax
+    pop r15
+    mul r15
+
     add r13, rax    ; r13 += rax
+    cmp rbx, 1
+    jne .not_enabled
+    add r14, rax
+.not_enabled:
     inc r12         ; idx += 1
+    
+    ; hack because reset state will pop two values
+    push rax
+    push rax
+
     jmp .reset_state
 
 .junk:
@@ -251,11 +250,21 @@ main:
     jmp .reset_state
 
 .reset_state:
+    ; we need to reset the stack too
+    cmp rbp, 2
+    jl .reset_state_jmp
+    pop rax
+    cmp rbp, 3
+    jl .reset_state_jmp
+    pop rax
+.reset_state_jmp:
     mov rbp, 0
     jmp .check_tok
 
 .finished:
     mov rax, r13
+    call print_int
+    mov rax, r14
     call print_int
 
     mov rax, 60         ; exit(
