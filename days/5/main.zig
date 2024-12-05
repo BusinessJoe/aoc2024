@@ -1,5 +1,4 @@
 const std = @import("std");
-const T = std.testing;
 const ArrayList = std.ArrayList;
 
 const Input = struct {
@@ -81,6 +80,75 @@ fn validSeq(allocator: std.mem.Allocator, map: [100]ArrayList(u8), seq: []const 
     return true;
 }
 
+fn contains(comptime T: type, haystack: []const T, needle: T) bool {
+    for (haystack) |item| {
+        if (item == needle) {
+            return true;
+        }
+    }
+    return false;
+}
+
+fn topoSort(allocator: std.mem.Allocator, rules: [][2]u8, seq: []const u8) ![]u8 {
+    var inDegrees = std.AutoHashMap(u8, usize).init(allocator);
+    defer inDegrees.deinit();
+    for (seq) |n| {
+        try inDegrees.put(n, 0);
+    }
+    for (rules) |rule| {
+        if (!contains(u8, seq, rule[0]) or !contains(u8, seq, rule[1])) {
+            continue;
+        }
+        inDegrees.getPtr(rule[1]).?.* += 1;
+    }
+
+    // S is a collection of all nodes with no incoming edge
+    var s = ArrayList(u8).init(allocator);
+    defer s.deinit();
+    for (seq) |n| {
+        if (inDegrees.get(n).? == 0) {
+            try s.append(n);
+        }
+    }
+
+    // Make a map of edges (Key = pre, Value = all post).
+    var edges = std.AutoHashMap(u8, ArrayList(u8)).init(allocator);
+    for (seq) |n| {
+        try edges.put(n, ArrayList(u8).init(allocator));
+    }
+    defer {
+        for (seq) |n| edges.get(n).?.deinit();
+        edges.deinit();
+    }
+    for (rules) |rule| {
+        if (!contains(u8, seq, rule[0]) or !contains(u8, seq, rule[1])) {
+            continue;
+        }
+        var lst = edges.get(rule[0]).?;
+        try lst.append(rule[1]);
+        try edges.put(rule[0], lst);
+    }
+
+    // Kahn's algorithm
+    var sorted = ArrayList(u8).init(allocator);
+    while (s.popOrNull()) |n| {
+        try sorted.append(n);
+
+        // Iterate over each node m with an edge from n to m, removing the edge
+        // as well.
+        while (edges.getPtr(n).?.popOrNull()) |m| {
+            const count: usize = inDegrees.get(m).?;
+            try inDegrees.put(m, count - 1);
+
+            if (count - 1 == 0) {
+                try s.append(m);
+            }
+        }
+    }
+
+    return sorted.toOwnedSlice();
+}
+
 pub fn aoc5(allocator: std.mem.Allocator, reader: anytype) !struct { part1: u32, part2: u32 } {
     const input = try parseInput(allocator, reader);
     defer input.deinit();
@@ -102,13 +170,18 @@ pub fn aoc5(allocator: std.mem.Allocator, reader: anytype) !struct { part1: u32,
     }
 
     var part1: u32 = 0;
+    var part2: u32 = 0;
     for (input.seqs) |seq| {
         if (try validSeq(allocator, map, seq)) {
             part1 += seq[seq.len / 2];
+        } else {
+            const sorted = try topoSort(allocator, input.rules, seq);
+            defer allocator.free(sorted);
+            part2 += sorted[sorted.len / 2];
         }
     }
 
-    return .{ .part1 = part1, .part2 = 0 };
+    return .{ .part1 = part1, .part2 = part2 };
 }
 
 pub fn main() !void {
@@ -122,7 +195,7 @@ pub fn main() !void {
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers.part1, answers.part2 });
 }
 
-test "part 1 example" {
+test "test example" {
     const test_allocator = std.testing.allocator;
     const expect = std.testing.expect;
 
@@ -131,6 +204,6 @@ test "part 1 example" {
 
     const answers = try aoc5(test_allocator, stream.reader());
 
-    std.debug.print("{d}\n", .{answers.part1});
     try expect(answers.part1 == 143);
+    try expect(answers.part2 == 123);
 }
