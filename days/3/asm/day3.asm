@@ -23,49 +23,6 @@ readinput:
     syscall
     ret
 
-; Arguments
-;   rax: Pointer to null-terminated string
-; Returns
-;   rax: Length of string
-strlen:
-    push    rbx
-    mov     rbx, rax    
-.nextchar:
-    cmp     byte [rax], 0
-    jz      .finished
-    inc     rax
-    jmp     .nextchar
-.finished:
-    sub     rax, rbx
-    pop     rbx
-    ret
-
-
-; Arguments
-;   rax: Pointer to null-terminated string
-print:
-    push rax
-    push rdi
-    push rsi
-    push rdx
-
-    mov     rsi, rax    ; string arg
-
-    mov     rsi, rax
-    call    strlen
-    mov     rdx, rax    ; Put length of string into rdx
-
-    mov     rdi, 1      ; stdin
-    mov     rax, 1      ; write
-    syscall
-
-    pop rdx
-    pop rsi
-    pop rdi
-    pop rax
-
-    ret
-
 print_int:
     mov rdi, message
     mov rsi, rax
