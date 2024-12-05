@@ -40,16 +40,14 @@ const Grid = struct {
         const urow: usize = @intCast(row);
         const ucol: usize = @intCast(col);
 
-        // std.debug.print("{d} {d}\n", .{ urow, ucol });
-
         return self.rows[urow][ucol];
     }
 };
 
-fn getDiag4(grid: *const Grid, r: isize, c: isize, dr: isize, dc: isize) ?[4]u8 {
-    var text = [_]u8{ 0, 0, 0, 0 };
+fn buildString(comptime n: comptime_int, grid: *const Grid, r: isize, c: isize, dr: isize, dc: isize) ?[n]u8 {
+    var text: [n]u8 = undefined;
 
-    for (0..4) |i| {
+    for (0..n) |i| {
         const si: isize = @intCast(i);
         const row: isize = r + dr * si;
         const col: isize = c + dc * si;
@@ -60,15 +58,7 @@ fn getDiag4(grid: *const Grid, r: isize, c: isize, dr: isize, dc: isize) ?[4]u8 
 }
 
 fn hasMas(grid: *const Grid, r: isize, c: isize, dr: isize, dc: isize) bool {
-    var text = [_]u8{ 0, 0, 0 };
-
-    for (0..3) |i| {
-        const si: isize = @intCast(i);
-        const row: isize = r + dr * (si - 1);
-        const col: isize = c + dc * (si - 1);
-        text[i] = grid.get(row, col) orelse return false;
-    }
-
+    var text = buildString(3, grid, r - dr, c - dc, dr, dc) orelse return false;
     return std.mem.eql(u8, &text, "MAS");
 }
 
@@ -84,7 +74,7 @@ fn part1(grid: *const Grid) u64 {
                 const dr = drs[i];
                 const dc = dcs[i];
 
-                if (getDiag4(grid, @intCast(r), @intCast(c), dr, dc)) |diag| {
+                if (buildString(4, grid, @intCast(r), @intCast(c), dr, dc)) |diag| {
                     if (std.mem.eql(u8, &diag, "XMAS")) {
                         count += 1;
                     }
