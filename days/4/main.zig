@@ -57,6 +57,11 @@ fn buildString(comptime n: comptime_int, grid: *const Grid, r: isize, c: isize, 
     return text;
 }
 
+fn hasXmas(grid: *const Grid, r: isize, c: isize, dr: isize, dc: isize) bool {
+    var text = buildString(4, grid, @intCast(r), @intCast(c), dr, dc) orelse return false;
+    return std.mem.eql(u8, &text, "XMAS");
+}
+
 fn hasMas(grid: *const Grid, r: isize, c: isize, dr: isize, dc: isize) bool {
     var text = buildString(3, grid, r - dr, c - dc, dr, dc) orelse return false;
     return std.mem.eql(u8, &text, "MAS");
@@ -65,7 +70,7 @@ fn hasMas(grid: *const Grid, r: isize, c: isize, dr: isize, dc: isize) bool {
 fn part1(grid: *const Grid) u64 {
     var count: u64 = 0;
 
-    const drs = [_]isize{ 1, 1, 1, 0, 0, -1, -1, -1 };
+    const drs = [_]isize{ -1, -1, -1, 0, 0, 1, 1, 1 };
     const dcs = [_]isize{ -1, 0, 1, -1, 1, -1, 0, 1 };
 
     for (0..grid.height) |r| {
@@ -74,10 +79,8 @@ fn part1(grid: *const Grid) u64 {
                 const dr = drs[i];
                 const dc = dcs[i];
 
-                if (buildString(4, grid, @intCast(r), @intCast(c), dr, dc)) |diag| {
-                    if (std.mem.eql(u8, &diag, "XMAS")) {
-                        count += 1;
-                    }
+                if (hasXmas(grid, @intCast(r), @intCast(c), dr, dc)) {
+                    count += 1;
                 }
             }
         }
