@@ -9,7 +9,7 @@ const Grid = struct {
 
     pub fn new(allocator: std.mem.Allocator, text: []const u8) !Grid {
         var lines = std.ArrayList([]const u8).init(allocator);
-        var it = std.mem.split(u8, text, "\n");
+        var it = std.mem.splitScalar(u8, text, '\n');
         while (it.next()) |line| {
             if (line.len > 0) {
                 try lines.append(line);
