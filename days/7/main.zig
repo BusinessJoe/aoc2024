@@ -66,33 +66,48 @@ const Input = struct {
     }
 };
 
-fn concat(a: u64, b: u64) u64 {
-    var aCopy = a;
-    var bCopy = b;
-    while (bCopy > 0) {
-        aCopy *= 10;
-        bCopy /= 10;
-    }
-    return aCopy + b;
-}
-
-fn checkLine(target: u64, num: u64, rest: []u64) bool {
+fn checkLineRtl(target: u64, num: u64, rest: []u64) bool {
     if (rest.len == 0) {
         return target == num;
     }
 
-    return checkLine(target, num * rest[0], rest[1..]) or
-        checkLine(target, num + rest[0], rest[1..]);
+    const last = rest[rest.len - 1];
+
+    if (num % last == 0) {
+        if (checkLineRtl(target, num / last, rest[0 .. rest.len - 1])) return true;
+    }
+
+    if (num >= last) {
+        if (checkLineRtl(target, num - last, rest[0 .. rest.len - 1])) return true;
+    }
+
+    return false;
 }
 
-fn checkLineConcat(target: u64, num: u64, rest: []u64) bool {
+fn checkLineRtlConcat(target: u64, num: u64, rest: []u64) bool {
     if (rest.len == 0) {
         return target == num;
     }
 
-    return checkLineConcat(target, num * rest[0], rest[1..]) or
-        checkLineConcat(target, num + rest[0], rest[1..]) or
-        checkLineConcat(target, concat(num, rest[0]), rest[1..]);
+    const last = rest[rest.len - 1];
+
+    var n: u64 = 1;
+    while (n <= last) {
+        n *= 10;
+    }
+    if (num % n == last) {
+        if (checkLineRtlConcat(target, num / n, rest[0 .. rest.len - 1])) return true;
+    }
+
+    if (num % last == 0) {
+        if (checkLineRtlConcat(target, num / last, rest[0 .. rest.len - 1])) return true;
+    }
+
+    if (num >= last) {
+        if (checkLineRtlConcat(target, num - last, rest[0 .. rest.len - 1])) return true;
+    }
+
+    return false;
 }
 
 pub fn aoc7(allocator: std.mem.Allocator, reader: anytype) !struct { part1: u64, part2: u64 } {
@@ -102,10 +117,10 @@ pub fn aoc7(allocator: std.mem.Allocator, reader: anytype) !struct { part1: u64,
     var part1: u64 = 0;
     var part2: u64 = 0;
     for (input.lines) |line| {
-        if (checkLine(line.target, line.nums[0], line.nums[1..])) {
+        if (checkLineRtl(line.nums[0], line.target, line.nums[1..])) {
             part1 += line.target;
         }
-        if (checkLineConcat(line.target, line.nums[0], line.nums[1..])) {
+        if (checkLineRtlConcat(line.nums[0], line.target, line.nums[1..])) {
             part2 += line.target;
         }
     }
@@ -138,15 +153,16 @@ test "test example" {
     try expectEqual(11387, answers.part2);
 }
 
-test "test concat" {
-    try expect(concat(12, 345) == 12345);
-    try expect(concat(1, 3) == 13);
-    try expect(concat(15, 6) == 156);
-}
-
 test "test checkline" {
     const line = try InputLine.parse(test_allocator, "7290: 6 8 6 15");
     defer line.deinit();
 
-    try expect(checkLineConcat(line.target, line.nums[0], line.nums[1..]));
+    try expect(checkLineRtlConcat(line.nums[0], line.target, line.nums[1..]));
+}
+
+test "test checkline 2" {
+    const line = try InputLine.parse(test_allocator, "12017: 5 1 1 220 797");
+    defer line.deinit();
+
+    try expect(checkLineRtlConcat(line.nums[0], line.target, line.nums[1..]));
 }
