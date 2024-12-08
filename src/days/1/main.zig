@@ -1,4 +1,8 @@
 const std = @import("std");
+const types = @import("types");
+const AocError = types.AocError;
+const Answer = types.Answer;
+
 const Allocator = std.mem.Allocator;
 const parseInt = std.fmt.parseInt;
 const test_allocator = std.testing.allocator;
@@ -66,18 +70,22 @@ fn aoc1p2(allocator: Allocator, l1: []u32, l2: []u32) !u32 {
     return total;
 }
 
-fn aoc1(allocator: Allocator, reader: anytype) !struct { u32, u32 } {
-    const lists = try parseLists(allocator, reader);
-    defer lists[0].deinit();
-    defer lists[1].deinit();
+pub fn Aoc1(comptime R: type) type {
+    return struct {
+        pub fn solve(allocator: Allocator, reader: R) AocError!Answer {
+            const lists = parseLists(allocator, reader) catch return AocError.ParseFailure;
+            defer lists[0].deinit();
+            defer lists[1].deinit();
 
-    std.mem.sort(u32, lists[0].items, {}, comptime std.sort.asc(u32));
-    std.mem.sort(u32, lists[1].items, {}, comptime std.sort.asc(u32));
+            std.mem.sort(u32, lists[0].items, {}, comptime std.sort.asc(u32));
+            std.mem.sort(u32, lists[1].items, {}, comptime std.sort.asc(u32));
 
-    const out1 = aoc1p1(lists[0].items, lists[1].items);
-    const out2 = try aoc1p2(allocator, lists[0].items, lists[1].items);
+            const out1 = aoc1p1(lists[0].items, lists[1].items);
+            const out2 = try aoc1p2(allocator, lists[0].items, lists[1].items);
 
-    return .{ out1, out2 };
+            return Answer{ .part1 = out1, .part2 = out2 };
+        }
+    };
 }
 
 pub fn main() !void {
@@ -86,7 +94,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const answers = try aoc1(allocator, stdin.reader());
+    const answers = try Aoc1(std.fs.File).solve(allocator, stdin.reader());
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers[0], answers[1] });
 }
 
@@ -98,7 +106,7 @@ test "both parts with given example" {
 
     var stream = std.io.fixedBufferStream(list.items);
 
-    const answers = try aoc1(test_allocator, stream.reader());
+    const answers = try Aoc1(std.fs.File).solve(test_allocator, stream.reader());
 
     try expect(answers[0] == 11);
     try expect(answers[1] == 31);
