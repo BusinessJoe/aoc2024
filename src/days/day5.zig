@@ -1,5 +1,8 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
+const types = @import("types");
+const AocError = types.AocError;
+const Answer = types.Answer;
 
 const Input = struct {
     rules: [][2]u8,
@@ -149,39 +152,43 @@ fn topoSort(allocator: std.mem.Allocator, rules: [][2]u8, seq: []const u8) ![]u8
     return sorted.toOwnedSlice();
 }
 
-pub fn aoc5(allocator: std.mem.Allocator, reader: anytype) !struct { part1: u32, part2: u32 } {
-    const input = try parseInput(allocator, reader);
-    defer input.deinit();
+pub fn Aoc5(comptime R: type) type {
+    return struct {
+        pub fn solve(allocator: std.mem.Allocator, reader: R) AocError!Answer {
+            const input = parseInput(allocator, reader) catch return AocError.ParseFailure;
+            defer input.deinit();
 
-    var map: [100]std.ArrayList(u8) = undefined;
-    for (0..100) |i| {
-        map[i] = std.ArrayList(u8).init(allocator);
-    }
-    defer {
-        for (0..100) |i| {
-            map[i].deinit();
+            var map: [100]std.ArrayList(u8) = undefined;
+            for (0..100) |i| {
+                map[i] = std.ArrayList(u8).init(allocator);
+            }
+            defer {
+                for (0..100) |i| {
+                    map[i].deinit();
+                }
+            }
+
+            for (input.rules) |rule| {
+                var list = map[rule[1]];
+                try list.append(rule[0]);
+                map[rule[1]] = list;
+            }
+
+            var part1: u32 = 0;
+            var part2: u32 = 0;
+            for (input.seqs) |seq| {
+                if (try validSeq(allocator, map, seq)) {
+                    part1 += seq[seq.len / 2];
+                } else {
+                    const sorted = try topoSort(allocator, input.rules, seq);
+                    defer allocator.free(sorted);
+                    part2 += sorted[sorted.len / 2];
+                }
+            }
+
+            return .{ .part1 = part1, .part2 = part2 };
         }
-    }
-
-    for (input.rules) |rule| {
-        var list = map[rule[1]];
-        try list.append(rule[0]);
-        map[rule[1]] = list;
-    }
-
-    var part1: u32 = 0;
-    var part2: u32 = 0;
-    for (input.seqs) |seq| {
-        if (try validSeq(allocator, map, seq)) {
-            part1 += seq[seq.len / 2];
-        } else {
-            const sorted = try topoSort(allocator, input.rules, seq);
-            defer allocator.free(sorted);
-            part2 += sorted[sorted.len / 2];
-        }
-    }
-
-    return .{ .part1 = part1, .part2 = part2 };
+    };
 }
 
 pub fn main() !void {
@@ -191,7 +198,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const answers = try aoc5(allocator, stdin.reader());
+    const answers = try Aoc5.solve(allocator, stdin.reader());
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers.part1, answers.part2 });
 }
 
@@ -202,7 +209,7 @@ test "test example" {
     const exampleData = @embedFile("data/example");
     var stream = std.io.fixedBufferStream(exampleData);
 
-    const answers = try aoc5(test_allocator, stream.reader());
+    const answers = try Aoc5.solve(test_allocator, stream.reader());
 
     try expect(answers.part1 == 143);
     try expect(answers.part2 == 123);

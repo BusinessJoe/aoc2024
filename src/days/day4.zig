@@ -1,5 +1,7 @@
 const std = @import("std");
-const T = std.testing;
+const types = @import("types");
+const AocError = types.AocError;
+const Answer = types.Answer;
 
 const Grid = struct {
     rows: []const []const u8,
@@ -9,7 +11,7 @@ const Grid = struct {
 
     pub fn new(allocator: std.mem.Allocator, text: []const u8) !Grid {
         var lines = std.ArrayList([]const u8).init(allocator);
-        var it = std.mem.split(u8, text, "\n");
+        var it = std.mem.splitScalar(u8, text, '\n');
         while (it.next()) |line| {
             if (line.len > 0) {
                 try lines.append(line);
@@ -104,17 +106,21 @@ fn part2(grid: *const Grid) u64 {
     return count;
 }
 
-fn aoc4(allocator: std.mem.Allocator, reader: anytype) !struct { u64, u64 } {
-    var buffer: [100000]u8 = undefined;
-    const bytes = try reader.readAll(&buffer);
+pub fn Aoc4(comptime R: type) type {
+    return struct {
+        pub fn solve(allocator: std.mem.Allocator, reader: R) AocError!Answer {
+            var buffer: [100000]u8 = undefined;
+            const bytes = reader.readAll(&buffer) catch return AocError.ParseFailure;
 
-    const grid = try Grid.new(allocator, buffer[0..bytes]);
-    defer grid.deinit();
+            const grid = try Grid.new(allocator, buffer[0..bytes]);
+            defer grid.deinit();
 
-    const total1 = part1(&grid);
-    const total2 = part2(&grid);
+            const total1 = part1(&grid);
+            const total2 = part2(&grid);
 
-    return .{ total1, total2 };
+            return .{ .part1 = total1, .part2 = total2 };
+        }
+    };
 }
 
 pub fn main() !void {
@@ -124,6 +130,6 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const answers = try aoc4(allocator, stdin.reader());
+    const answers = try Aoc4.solve(allocator, stdin.reader());
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers[0], answers[1] });
 }

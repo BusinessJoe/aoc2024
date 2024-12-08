@@ -1,5 +1,7 @@
 const std = @import("std");
-const T = std.testing;
+const types = @import("types");
+const AocError = types.AocError;
+const Answer = types.Answer;
 
 const Grid = struct {
     rows: []const []const u8,
@@ -212,42 +214,46 @@ fn tracePath(allocator: std.mem.Allocator, grid: *const Grid, extra: ?Pos) ![]Tr
     return trace.toOwnedSlice();
 }
 
-fn aoc6(allocator: std.mem.Allocator, reader: anytype) !struct { part1: u64, part2: u64 } {
-    var buffer: [100000]u8 = undefined;
-    const bytes = try reader.readAll(&buffer);
-    const grid = try Grid.new(allocator, buffer[0..bytes]);
-    defer grid.deinit();
+pub fn Aoc6(comptime R: type) type {
+    return struct {
+        pub fn solve(allocator: std.mem.Allocator, reader: R) AocError!Answer {
+            var buffer: [100000]u8 = undefined;
+            const bytes = reader.readAll(&buffer) catch return AocError.ParseFailure;
+            const grid = try Grid.new(allocator, buffer[0..bytes]);
+            defer grid.deinit();
 
-    const trace = try tracePath(allocator, &grid, null);
-    defer allocator.free(trace);
+            const trace = try tracePath(allocator, &grid, null);
+            defer allocator.free(trace);
 
-    // Part 1
-    var visited = std.AutoHashMap(Pos, void).init(allocator);
-    defer visited.deinit();
+            // Part 1
+            var visited = std.AutoHashMap(Pos, void).init(allocator);
+            defer visited.deinit();
 
-    for (trace) |t| {
-        try visited.put(t.pos, {});
-    }
+            for (trace) |t| {
+                try visited.put(t.pos, {});
+            }
 
-    // Part 2
-    var extras = std.AutoHashMap(Pos, void).init(allocator);
-    defer extras.deinit();
+            // Part 2
+            var extras = std.AutoHashMap(Pos, void).init(allocator);
+            defer extras.deinit();
 
-    for (trace[1..]) |t| {
-        const extraPos = t.pos;
-        if (grid.get(extraPos)) |tile| {
-            if (tile == '.') {
-                const extraTrace = try tracePath(allocator, &grid, extraPos);
-                if (extraTrace.len == 0) {
-                    try extras.put(extraPos, {});
-                } else {
-                    allocator.free(extraTrace);
+            for (trace[1..]) |t| {
+                const extraPos = t.pos;
+                if (grid.get(extraPos)) |tile| {
+                    if (tile == '.') {
+                        const extraTrace = try tracePath(allocator, &grid, extraPos);
+                        if (extraTrace.len == 0) {
+                            try extras.put(extraPos, {});
+                        } else {
+                            allocator.free(extraTrace);
+                        }
+                    }
                 }
             }
-        }
-    }
 
-    return .{ .part1 = visited.count(), .part2 = extras.count() };
+            return .{ .part1 = visited.count(), .part2 = extras.count() };
+        }
+    };
 }
 
 pub fn main() !void {
@@ -257,6 +263,6 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const answers = try aoc6(allocator, stdin.reader());
+    const answers = try Aoc6.solve(allocator, stdin.reader());
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers.part1, answers.part2 });
 }

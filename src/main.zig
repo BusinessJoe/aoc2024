@@ -1,15 +1,32 @@
 const std = @import("std");
 const Allocator = std.mem.Allocator;
 const types = @import("types");
-const Aoc1 = @import("days/1/main.zig").Aoc1;
+const Aoc1 = @import("days/day1.zig").Aoc1;
+const Aoc2 = @import("days/day2.zig").Aoc2;
+const Aoc3 = @import("days/day3.zig").Aoc3;
+const Aoc4 = @import("days/day4.zig").Aoc4;
+const Aoc5 = @import("days/day5.zig").Aoc5;
+const Aoc6 = @import("days/day6.zig").Aoc6;
+const Aoc7 = @import("days/day7.zig").Aoc7;
+const Aoc8 = @import("days/day8.zig").Aoc8;
 
-const sols = [_]types.Solution(std.fs.File.Reader){Aoc1(std.fs.File.Reader).solve};
+const Reader = std.fs.File.Reader;
+const sols = [_]types.Solution(Reader){
+    Aoc1(Reader).solve,
+    Aoc2(Reader).solve,
+    Aoc3(Reader).solve,
+    Aoc4(Reader).solve,
+    Aoc5(Reader).solve,
+    Aoc6(Reader).solve,
+    Aoc7(Reader).solve,
+    Aoc8(Reader).solve,
+};
 
 fn openInputFile(allocator: Allocator, day: usize) !std.fs.File {
     var day_buf: [2]u8 = undefined;
     const day_str = try std.fmt.bufPrint(&day_buf, "{d}", .{day});
 
-    const paths = [_][]const u8{ "inputs", day_str, "input" };
+    const paths = [_][]const u8{ "inputs", "real", day_str };
 
     const filepath = try std.fs.path.join(allocator, &paths);
     defer allocator.free(filepath);

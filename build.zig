@@ -40,6 +40,10 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/types.zig"),
     });
 
+    exe.root_module.addAnonymousImport("input", .{
+        .root_source_file = b.path("src/input.zig"),
+    });
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).

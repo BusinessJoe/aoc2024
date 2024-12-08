@@ -1,5 +1,8 @@
 const std = @import("std");
 const ArrayList = std.ArrayList;
+const types = @import("types");
+const AocError = types.AocError;
+const Answer = types.Answer;
 
 fn nextLine(reader: anytype, buffer: []u8) !?[]const u8 {
     const line = (try reader.readUntilDelimiterOrEof(
@@ -110,22 +113,26 @@ fn checkLineRtlConcat(target: u64, num: u64, rest: []u64) bool {
     return false;
 }
 
-pub fn aoc7(allocator: std.mem.Allocator, reader: anytype) !struct { part1: u64, part2: u64 } {
-    const input = try Input.parse(allocator, reader);
-    defer input.deinit();
+pub fn Aoc7(comptime R: type) type {
+    return struct {
+        pub fn solve(allocator: std.mem.Allocator, reader: R) AocError!Answer {
+            const input = Input.parse(allocator, reader) catch return AocError.ParseFailure;
+            defer input.deinit();
 
-    var part1: u64 = 0;
-    var part2: u64 = 0;
-    for (input.lines) |line| {
-        if (checkLineRtl(line.nums[0], line.target, line.nums[1..])) {
-            part1 += line.target;
-        }
-        if (checkLineRtlConcat(line.nums[0], line.target, line.nums[1..])) {
-            part2 += line.target;
-        }
-    }
+            var part1: u64 = 0;
+            var part2: u64 = 0;
+            for (input.lines) |line| {
+                if (checkLineRtl(line.nums[0], line.target, line.nums[1..])) {
+                    part1 += line.target;
+                }
+                if (checkLineRtlConcat(line.nums[0], line.target, line.nums[1..])) {
+                    part2 += line.target;
+                }
+            }
 
-    return .{ .part1 = part1, .part2 = part2 };
+            return .{ .part1 = part1, .part2 = part2 };
+        }
+    };
 }
 
 pub fn main() !void {
@@ -135,7 +142,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    const answers = try aoc7(allocator, stdin.reader());
+    const answers = try Aoc7.solve(allocator, stdin.reader());
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers.part1, answers.part2 });
 }
 
@@ -147,7 +154,7 @@ test "test example" {
     const exampleData = @embedFile("data/example");
     var stream = std.io.fixedBufferStream(exampleData);
 
-    const answers = try aoc7(test_allocator, stream.reader());
+    const answers = try Aoc7.solve(test_allocator, stream.reader());
 
     try expect(answers.part1 == 3749);
     try expectEqual(11387, answers.part2);

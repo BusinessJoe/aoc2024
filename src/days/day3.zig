@@ -1,5 +1,7 @@
 const std = @import("std");
-const T = std.testing;
+const types = @import("types");
+const AocError = types.AocError;
+const Answer = types.Answer;
 
 const TokenType = enum { num, comma, mul_start, mul_end, junk, enable };
 const Token = union(TokenType) { num: u64, comma, mul_start, mul_end, junk, enable: bool };
@@ -144,32 +146,40 @@ const Parser = struct {
     }
 };
 
-fn aoc3(reader: anytype) !struct { u64, u64 } {
-    var total: u64 = 0;
-    var total2: u64 = 0;
-    var buffer: [100000]u8 = undefined;
+pub fn Aoc3(comptime R: type) type {
+    return struct {
+        pub fn solve(_: std.mem.Allocator, reader: R) AocError!Answer {
+            var total: u64 = 0;
+            var total2: u64 = 0;
+            var buffer: [100000]u8 = undefined;
 
-    const bytes = try reader.readAll(&buffer);
-    const t = Tokenizer{ .text = buffer[0..bytes] };
-    var p = Parser{ .tokenizer = t };
+            const bytes = reader.readAll(&buffer) catch return AocError.ParseFailure;
+            const t = Tokenizer{ .text = buffer[0..bytes] };
+            var p = Parser{ .tokenizer = t };
 
-    while (p.next()) |mul| {
-        total += mul.eval();
-        if (mul.enabled) {
-            total2 += mul.eval();
+            while (p.next()) |mul| {
+                total += mul.eval();
+                if (mul.enabled) {
+                    total2 += mul.eval();
+                }
+            }
+
+            return .{ .part1 = total, .part2 = total2 };
         }
-    }
-
-    return .{ total, total2 };
+    };
 }
 
 pub fn main() !void {
     const stdin = std.io.getStdIn();
     const stdout = std.io.getStdOut();
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    const allocator = gpa.allocator();
 
-    const answers = try aoc3(stdin.reader());
+    const answers = try Aoc3.solve(allocator, stdin.reader());
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers[0], answers[1] });
 }
+
+const T = std.testing;
 
 test "test tokenizer" {
     const example = "xmul(2,4)%&mul[3,7]!@^do_not_mul(5,5)+mul(64,64]then(mul(11,8)mul(8,5))";

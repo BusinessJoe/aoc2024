@@ -1,12 +1,10 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
+const parseInt = std.fmt.parseInt;
+
 const types = @import("types");
 const AocError = types.AocError;
 const Answer = types.Answer;
-
-const Allocator = std.mem.Allocator;
-const parseInt = std.fmt.parseInt;
-const test_allocator = std.testing.allocator;
-const expect = std.testing.expect;
 
 fn nextLine(reader: anytype, buffer: []u8) !?[]const u8 {
     const line = (try reader.readUntilDelimiterOrEof(
@@ -97,6 +95,9 @@ pub fn main() !void {
     const answers = try Aoc1(std.fs.File).solve(allocator, stdin.reader());
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers[0], answers[1] });
 }
+
+const test_allocator = std.testing.allocator;
+const expect = std.testing.expect;
 
 test "both parts with given example" {
     var list = std.ArrayList(u8).init(test_allocator);

@@ -3,6 +3,10 @@ const Allocator = std.mem.Allocator;
 const parseInt = std.fmt.parseInt;
 const expect = std.testing.expect;
 
+const types = @import("types");
+const AocError = types.AocError;
+const Answer = types.Answer;
+
 fn nextLine(reader: anytype, buffer: []u8) !?[]const u8 {
     const line = (try reader.readUntilDelimiterOrEof(
         buffer,
@@ -37,7 +41,7 @@ fn reportIsSafe(level: []u32) bool {
     return true;
 }
 
-fn reportWithRemovalIsSafe(allocator: *Allocator, level: []u32) !bool {
+fn reportWithRemovalIsSafe(allocator: Allocator, level: []u32) !bool {
     var small_level = try allocator.alloc(u32, level.len - 1);
     defer allocator.free(small_level);
 
@@ -56,30 +60,34 @@ fn reportWithRemovalIsSafe(allocator: *Allocator, level: []u32) !bool {
     return false;
 }
 
-fn aoc2(allocator: *Allocator, reader: anytype) !struct { u32, u32 } {
-    var total: u32 = 0;
-    var total2: u32 = 0;
-    var buffer: [100]u8 = undefined;
-    while (try nextLine(reader, &buffer)) |line| {
-        var levels = std.ArrayList(u32).init(allocator.*);
-        defer levels.deinit();
+pub fn Aoc2(comptime R: type) type {
+    return struct {
+        pub fn solve(allocator: Allocator, reader: R) AocError!Answer {
+            var total: u32 = 0;
+            var total2: u32 = 0;
+            var buffer: [100]u8 = undefined;
+            while (nextLine(reader, &buffer) catch return AocError.ParseFailure) |line| {
+                var levels = std.ArrayList(u32).init(allocator);
+                defer levels.deinit();
 
-        var it = std.mem.tokenizeScalar(u8, line, ' ');
+                var it = std.mem.tokenizeScalar(u8, line, ' ');
 
-        while (it.next()) |token| {
-            const n = try parseInt(u32, token, 10);
-            try levels.append(n);
+                while (it.next()) |token| {
+                    const n = parseInt(u32, token, 10) catch return AocError.ParseFailure;
+                    try levels.append(n);
+                }
+
+                if (reportIsSafe(levels.items)) {
+                    total += 1;
+                    total2 += 1;
+                } else if (try reportWithRemovalIsSafe(allocator, levels.items)) {
+                    total2 += 1;
+                }
+            }
+
+            return .{ .part1 = total, .part2 = total2 };
         }
-
-        if (reportIsSafe(levels.items)) {
-            total += 1;
-            total2 += 1;
-        } else if (try reportWithRemovalIsSafe(allocator, levels.items)) {
-            total2 += 1;
-        }
-    }
-
-    return .{ total, total2 };
+    };
 }
 
 pub fn main() !void {
@@ -88,7 +96,7 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     var allocator = gpa.allocator();
 
-    const answers = try aoc2(&allocator, stdin.reader());
+    const answers = try Aoc2.solve(&allocator, stdin.reader());
     try stdout.writer().print("Part one: {d}\nPart two: {d}\n", .{ answers[0], answers[1] });
 }
 
@@ -102,7 +110,7 @@ test "both parts with given example" {
 
     var stream = std.io.fixedBufferStream(list.items);
 
-    const answers = try aoc2(&test_allocator, stream.reader());
+    const answers = try Aoc2.solve(&test_allocator, stream.reader());
 
     try expect(answers[0] == 2);
     try expect(answers[1] == 4);
