@@ -2,7 +2,7 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const ArrayList = std.ArrayList;
 
-fn nextLine(reader: anytype, buffer: []u8) !?[]const u8 {
+pub fn nextLine(reader: anytype, buffer: []u8) !?[]const u8 {
     const line = (try reader.readUntilDelimiterOrEof(
         buffer,
         '\n',

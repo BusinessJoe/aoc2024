@@ -12,6 +12,7 @@ const Aoc7 = @import("days/day7.zig").Aoc7;
 const Aoc8 = @import("days/day8.zig").Aoc8;
 const Aoc9 = @import("days/day9.zig").Aoc9;
 const Aoc10 = @import("days/day10.zig").Aoc10;
+const Aoc11 = @import("days/day11.zig").Aoc11;
 
 const Reader = std.fs.File.Reader;
 const sols = [_]types.Solution(Reader){
@@ -25,6 +26,7 @@ const sols = [_]types.Solution(Reader){
     Aoc8(Reader).solve,
     Aoc9(Reader).solve,
     Aoc10(Reader).solve,
+    Aoc11(Reader).solve,
 };
 
 fn openInputFile(allocator: Allocator, day: usize, dirpath: []const u8) !std.fs.File {
