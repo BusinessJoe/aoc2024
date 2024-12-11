@@ -134,6 +134,7 @@ const TraceItem = struct {
 
 fn tracePath(allocator: std.mem.Allocator, grid: *const Grid, extra: ?Pos) ![]TraceItem {
     var trace = std.ArrayList(TraceItem).init(allocator);
+    defer trace.deinit();
 
     var gPos = findGuard(grid).?;
 
