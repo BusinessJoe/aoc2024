@@ -11,6 +11,7 @@ const Aoc6 = @import("days/day6.zig").Aoc6;
 const Aoc7 = @import("days/day7.zig").Aoc7;
 const Aoc8 = @import("days/day8.zig").Aoc8;
 const Aoc9 = @import("days/day9.zig").Aoc9;
+const Aoc10 = @import("days/day10.zig").Aoc10;
 
 const Reader = std.fs.File.Reader;
 const sols = [_]types.Solution(Reader){
@@ -23,6 +24,7 @@ const sols = [_]types.Solution(Reader){
     Aoc7(Reader).solve,
     Aoc8(Reader).solve,
     Aoc9(Reader).solve,
+    Aoc10(Reader).solve,
 };
 
 fn openInputFile(allocator: Allocator, day: usize, dirpath: []const u8) !std.fs.File {
@@ -97,6 +99,9 @@ fn printAnswers(day: u8, answers: Answer) !void {
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer if (gpa.deinit() == .leak) {
+        std.debug.print("leaked memory\n", .{});
+    };
     const allocator = gpa.allocator();
 
     const args = try parseArgs();
