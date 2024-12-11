@@ -2,56 +2,9 @@ const std = @import("std");
 const types = @import("types");
 const AocError = types.AocError;
 const Answer = types.Answer;
-
-const Grid = struct {
-    rows: []const []const u8,
-    width: usize,
-    height: usize,
-    allocator: std.mem.Allocator,
-
-    pub fn new(allocator: std.mem.Allocator, text: []const u8) !Grid {
-        var lines = std.ArrayList([]const u8).init(allocator);
-        var it = std.mem.splitScalar(u8, text, '\n');
-        while (it.next()) |line| {
-            if (line.len > 0) {
-                try lines.append(line);
-            }
-        }
-
-        const rows = try lines.toOwnedSlice();
-        return Grid{
-            .rows = rows,
-            .width = rows.len,
-            .height = rows[0].len,
-            .allocator = allocator,
-        };
-    }
-
-    pub fn deinit(self: Grid) void {
-        self.allocator.free(self.rows);
-    }
-
-    pub fn contains(self: Grid, p: Pos) bool {
-        if (p.row < 0 or p.col < 0) {
-            return false;
-        }
-        if (p.row >= self.height or p.col >= self.width) {
-            return false;
-        }
-        return true;
-    }
-
-    pub fn get(self: Grid, p: Pos) ?u8 {
-        if (!self.contains(p)) {
-            return null;
-        }
-
-        const urow: usize = @intCast(p.row);
-        const ucol: usize = @intCast(p.col);
-
-        return self.rows[urow][ucol];
-    }
-};
+const input = @import("input");
+const Grid = input.Grid;
+const IPos = input.IPos;
 
 const DirVisited = packed struct {
     up: bool = false,
@@ -80,15 +33,10 @@ const Dirs = enum {
     }
 };
 
-const Pos = struct {
-    row: isize,
-    col: isize,
-};
-
-fn findGuard(grid: *const Grid) ?Pos {
+fn findGuard(grid: *const Grid) ?IPos {
     for (0..grid.height) |r| {
         for (0..grid.width) |c| {
-            const pos: Pos = .{ .row = @intCast(r), .col = @intCast(c) };
+            const pos: IPos = .{ .row = @intCast(r), .col = @intCast(c) };
             if (grid.get(pos).? == '^') {
                 return pos;
             }
@@ -98,16 +46,13 @@ fn findGuard(grid: *const Grid) ?Pos {
     return null;
 }
 
-fn getIndex(pos: Pos, width: usize) usize {
-    if (pos.row < 0 or pos.col < 0 or pos.row >= width or pos.col >= width) {
-        std.debug.panic("Fuck", .{});
-    }
+fn getIndex(pos: IPos, width: usize) usize {
     const row: usize = @intCast(pos.row);
     const col: usize = @intCast(pos.col);
     return row * width + col;
 }
 
-fn move(pos: Pos, dir: Dirs) Pos {
+fn move(pos: IPos, dir: Dirs) IPos {
     var row = pos.row;
     var col = pos.col;
     switch (dir) {
@@ -128,56 +73,56 @@ fn move(pos: Pos, dir: Dirs) Pos {
 }
 
 const TraceItem = struct {
-    pos: Pos,
+    pos: IPos,
     dir: Dirs,
 };
 
-fn tracePath(allocator: std.mem.Allocator, grid: *const Grid, extra: ?Pos) ![]TraceItem {
+fn tracePath(allocator: std.mem.Allocator, grid: *const Grid, extra: ?IPos) ![]TraceItem {
     var trace = std.ArrayList(TraceItem).init(allocator);
     defer trace.deinit();
 
-    var gPos = findGuard(grid).?;
+    var gIPos = findGuard(grid).?;
 
     var visited: []DirVisited = try allocator.alloc(DirVisited, grid.width * grid.height);
     defer allocator.free(visited);
     for (0..grid.height) |row| {
         for (0..grid.width) |col| {
-            const pos = Pos{ .row = @intCast(row), .col = @intCast(col) };
+            const pos = IPos{ .row = @intCast(row), .col = @intCast(col) };
             visited[getIndex(pos, grid.width)] = DirVisited{};
         }
     }
 
     var dir = Dirs.up;
-    try trace.append(TraceItem{ .pos = gPos, .dir = dir });
+    try trace.append(TraceItem{ .pos = gIPos, .dir = dir });
 
     var inMap = true;
     while (inMap) {
-        // std.debug.print("{d} {d}\n", .{ gPos.row, gPos.col });
+        // std.debug.print("{d} {d}\n", .{ gIPos.row, gIPos.col });
         // Update visited
         switch (dir) {
             Dirs.up => {
-                visited[getIndex(gPos, grid.width)].up = true;
+                visited[getIndex(gIPos, grid.width)].up = true;
             },
             Dirs.right => {
-                visited[getIndex(gPos, grid.width)].right = true;
+                visited[getIndex(gIPos, grid.width)].right = true;
             },
             Dirs.down => {
-                visited[getIndex(gPos, grid.width)].down = true;
+                visited[getIndex(gIPos, grid.width)].down = true;
             },
             Dirs.left => {
-                visited[getIndex(gPos, grid.width)].left = true;
+                visited[getIndex(gIPos, grid.width)].left = true;
             },
         }
 
         // Make a move
         var moved = false;
         while (!moved) {
-            const nextPos = move(gPos, dir);
-            if (grid.get(nextPos)) |tile| {
+            const nextIPos = move(gIPos, dir);
+            if (grid.get(nextIPos)) |tile| {
                 // Treat extra as an extra obstacle
                 var hitsExtra = false;
                 if (extra) |e| {
-                    if (e.row == nextPos.row and e.col == nextPos.col) {
+                    if (e.row == nextIPos.row and e.col == nextIPos.col) {
                         hitsExtra = true;
                     }
                 }
@@ -186,9 +131,9 @@ fn tracePath(allocator: std.mem.Allocator, grid: *const Grid, extra: ?Pos) ![]Tr
                     // Turn right
                     dir = dir.turn();
                 } else {
-                    gPos = nextPos;
+                    gIPos = nextIPos;
                     try trace.append(TraceItem{
-                        .pos = gPos,
+                        .pos = gIPos,
                         .dir = dir,
                     });
                     moved = true;
@@ -201,7 +146,7 @@ fn tracePath(allocator: std.mem.Allocator, grid: *const Grid, extra: ?Pos) ![]Tr
 
         if (inMap) {
             // Check if repeat position
-            const v = visited[getIndex(gPos, grid.width)];
+            const v = visited[getIndex(gIPos, grid.width)];
             if ((dir == Dirs.up and v.up) or
                 (dir == Dirs.right and v.right) or
                 (dir == Dirs.down and v.down) or
@@ -218,33 +163,36 @@ fn tracePath(allocator: std.mem.Allocator, grid: *const Grid, extra: ?Pos) ![]Tr
 pub fn Aoc6(comptime R: type) type {
     return struct {
         pub fn solve(allocator: std.mem.Allocator, reader: R) AocError!Answer {
-            var buffer: [100000]u8 = undefined;
-            const bytes = reader.readAll(&buffer) catch return AocError.ParseFailure;
-            const grid = try Grid.new(allocator, buffer[0..bytes]);
+            const grid = Grid.fromReader(allocator, reader) catch return AocError.ParseFailure;
             defer grid.deinit();
 
             const trace = try tracePath(allocator, &grid, null);
             defer allocator.free(trace);
 
             // Part 1
-            var visited = std.AutoHashMap(Pos, void).init(allocator);
+            var visited = std.AutoHashMap(IPos, void).init(allocator);
             defer visited.deinit();
 
             for (trace) |t| {
+                if (visited.contains(t.pos)) {
+                    std.debug.print("{any}\n", .{t.pos});
+                }
                 try visited.put(t.pos, {});
             }
 
+            std.debug.print("done part 1\n", .{});
+
             // Part 2
-            var extras = std.AutoHashMap(Pos, void).init(allocator);
+            var extras = std.AutoHashMap(IPos, void).init(allocator);
             defer extras.deinit();
 
             for (trace[1..]) |t| {
-                const extraPos = t.pos;
-                if (grid.get(extraPos)) |tile| {
+                const extraIPos = t.pos;
+                if (grid.get(extraIPos)) |tile| {
                     if (tile == '.') {
-                        const extraTrace = try tracePath(allocator, &grid, extraPos);
+                        const extraTrace = try tracePath(allocator, &grid, extraIPos);
                         if (extraTrace.len == 0) {
-                            try extras.put(extraPos, {});
+                            try extras.put(extraIPos, {});
                         } else {
                             allocator.free(extraTrace);
                         }
