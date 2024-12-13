@@ -174,13 +174,13 @@ pub fn Aoc6(comptime R: type) type {
             defer visited.deinit();
 
             for (trace) |t| {
-                if (visited.contains(t.pos)) {
-                    std.debug.print("{any}\n", .{t.pos});
-                }
+                // if (visited.contains(t.pos)) {
+                //     std.debug.print("{any}\n", .{t.pos});
+                // }
                 try visited.put(t.pos, {});
             }
 
-            std.debug.print("done part 1\n", .{});
+            // std.debug.print("done part 1\n", .{});
 
             // Part 2
             var extras = std.AutoHashMap(IPos, void).init(allocator);
