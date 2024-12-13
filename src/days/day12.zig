@@ -17,12 +17,40 @@ const Region = struct {
     }
 };
 
+fn getLUTIndex(visited: std.AutoHashMap(IPos, void), pos: IPos) u8 {
+    const deltas3x3 = [_]IPos{
+        IPos{ .row = -1, .col = -1 },
+        IPos{ .row = -1, .col = 0 },
+        IPos{ .row = -1, .col = 1 },
+        IPos{ .row = 0, .col = -1 },
+        IPos{ .row = 0, .col = 1 },
+        IPos{ .row = 1, .col = -1 },
+        IPos{ .row = 1, .col = 0 },
+        IPos{ .row = 1, .col = 1 },
+    };
+
+    var lut_idx: u8 = 0;
+    for (deltas3x3, 0..8) |delta, i| {
+        const n_pos = IPos{
+            .row = pos.row + delta.row,
+            .col = pos.col + delta.col,
+        };
+        const i_u3: u3 = @intCast(i);
+        if (visited.contains(n_pos)) {
+            const one: u8 = 1;
+            lut_idx |= (one << i_u3);
+        }
+    }
+
+    return lut_idx;
+}
+
 fn findRegion(allocator: std.mem.Allocator, grid: Grid, seed: IPos) !Region {
     const region_type: u8 = grid.get(seed).?;
     var visited = std.AutoHashMap(IPos, void).init(allocator);
     var area: u32 = 0;
-    var peri: u32 = 0;
-    var edges: u32 = 0;
+    var peri: i32 = 0;
+    var edges: i32 = 0;
 
     var to_visit = std.ArrayList(IPos).init(allocator);
     defer to_visit.deinit();
@@ -56,40 +84,12 @@ fn findRegion(allocator: std.mem.Allocator, grid: Grid, seed: IPos) !Region {
             try to_visit.append(n_pos);
             if (visited.contains(n_pos)) neighbours += 1;
         }
-        peri += 4;
-        peri -= 2 * neighbours;
+        peri += 4 - 2 * @as(i32, neighbours);
 
         // Edge calculation
         const edge_delta_lut = comptime edgeDeltaLUT();
-        const deltas3x3 = [_]IPos{
-            IPos{ .row = -1, .col = -1 },
-            IPos{ .row = -1, .col = 0 },
-            IPos{ .row = -1, .col = 1 },
-            IPos{ .row = 0, .col = -1 },
-            IPos{ .row = 0, .col = 1 },
-            IPos{ .row = 1, .col = -1 },
-            IPos{ .row = 1, .col = 0 },
-            IPos{ .row = 1, .col = 1 },
-        };
-
-        var lut_idx: u8 = 0;
-        for (deltas3x3, 0..8) |delta, i| {
-            const n_pos = IPos{
-                .row = pos.row + delta.row,
-                .col = pos.col + delta.col,
-            };
-            const i_u3: u3 = @intCast(i);
-            if (visited.contains(n_pos)) {
-                const one: u8 = 1;
-                lut_idx |= (one << i_u3);
-            }
-        }
-        const delta = edge_delta_lut[lut_idx];
-        if (delta > 0) {
-            edges += @abs(delta);
-        } else {
-            edges -= @abs(delta);
-        }
+        const lut_idx = getLUTIndex(visited, pos);
+        edges += edge_delta_lut[lut_idx];
 
         try visited.put(pos, {});
     }
@@ -97,8 +97,8 @@ fn findRegion(allocator: std.mem.Allocator, grid: Grid, seed: IPos) !Region {
     return Region{
         .coords = visited,
         .area = area,
-        .edges = edges,
-        .perimeter = peri,
+        .perimeter = @intCast(peri),
+        .edges = @intCast(edges),
     };
 }
 
@@ -145,7 +145,7 @@ fn countEdgesLine(edge: []bool) u32 {
     var state = false;
     var count: u32 = 0;
 
-    for (edge) |e| {
+    inline for (edge) |e| {
         if (e) {
             if (!state) count += 1;
             state = true;
@@ -163,7 +163,7 @@ fn countEdges3x3(grid: [3][3]bool) u32 {
         var edge_r_b: [3]bool = undefined;
         var edge_c_l: [3]bool = undefined;
         var edge_c_r: [3]bool = undefined;
-        for (0..3) |ecol| {
+        inline for (0..3) |ecol| {
             const above = 1 <= erow and grid[erow - 1][ecol];
             const below = erow < 3 and grid[erow][ecol];
             edge_r_t[ecol] = (above and !below);
@@ -183,6 +183,7 @@ fn countEdges3x3(grid: [3][3]bool) u32 {
 }
 
 fn edgeDeltaLUT() [256]i32 {
+    @setEvalBranchQuota(45000);
     var deltas: [256]i32 = undefined;
 
     for (0..256) |i| {
@@ -201,10 +202,8 @@ fn edgeDeltaLUT() [256]i32 {
         grid[2][1] = i & (1 << 6) != 0;
         grid[2][2] = i & (1 << 7) != 0;
 
-        @setEvalBranchQuota(60000);
         const before: i32 = countEdges3x3(grid);
         grid[1][1] = true;
-        @setEvalBranchQuota(60000);
         const after: i32 = countEdges3x3(grid);
 
         deltas[i] = after - before;
