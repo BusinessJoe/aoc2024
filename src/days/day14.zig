@@ -28,7 +28,7 @@ fn parseLine(comptime R: type, reader: R) !?Robot {
     return .{ .x = x, .y = y, .dx = dx, .dy = dy };
 }
 
-fn hasTree(comptime width: usize, comptime height: usize, robots: []Robot, steps: i64) !bool {
+fn hasTree(comptime width: usize, comptime height: usize, robots: []Robot, steps: i64) bool {
     var locs: [width * height]u64 = undefined;
     for (&locs) |*l| {
         l.* = 0;
@@ -41,7 +41,7 @@ fn hasTree(comptime width: usize, comptime height: usize, robots: []Robot, steps
         locs[idx] += 1;
     }
 
-    var needle: [12]u64 = undefined;
+    var needle: [8]u64 = undefined;
     for (&needle) |*n| {
         n.* = 1;
     }
@@ -49,10 +49,9 @@ fn hasTree(comptime width: usize, comptime height: usize, robots: []Robot, steps
     return std.mem.indexOf(u64, &locs, &needle) != null;
 }
 
-fn printRobots(allocator: std.mem.Allocator, width: usize, height: usize, robots: []Robot, steps: i64) !void {
-    var locs = try allocator.alloc(u64, width * height);
-    defer allocator.free(locs);
-    for (locs) |*l| {
+fn printRobots(comptime width: usize, comptime height: usize, robots: []Robot, steps: i64) void {
+    var locs: [width * height]u64 = undefined;
+    for (&locs) |*l| {
         l.* = 0;
     }
 
@@ -61,11 +60,6 @@ fn printRobots(allocator: std.mem.Allocator, width: usize, height: usize, robots
         const y: usize = @intCast(@mod(robot.y + steps * robot.dy, @as(i64, @intCast(height))));
         const idx = x + y * width;
         locs[idx] += 1;
-    }
-
-    const needle: [12]u64 = undefined;
-    for (needle) |*n| {
-        n.* = 1;
     }
 
     std.debug.print("i: {}\n", .{steps});
@@ -124,7 +118,7 @@ pub fn Aoc14(comptime R: type) type {
 
             // period is 10403
             for (0..10403) |i| {
-                if (try hasTree(width, height, robots.items, @intCast(i))) {
+                if (hasTree(width, height, robots.items, @intCast(i))) {
                     part2 = i;
                     break;
                 }
@@ -136,4 +130,38 @@ pub fn Aoc14(comptime R: type) type {
             };
         }
     };
+}
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer if (gpa.deinit() == .leak) {
+        std.debug.print("leaked memory\n", .{});
+    };
+    const allocator = gpa.allocator();
+
+    const width = 101;
+    const height = 103;
+    // const width = 11;
+    // const height = 7;
+
+    var robots = std.ArrayList(Robot).init(allocator);
+    defer robots.deinit();
+
+    const reader = std.io.getStdIn().reader();
+
+    while (parseLine(std.fs.File.Reader, reader) catch return error.ParseFailure) |robot| {
+        try robots.append(robot);
+    }
+
+    var part2: u64 = 0;
+
+    // period is 10403
+    for (0..10403) |i| {
+        if (hasTree(width, height, robots.items, @intCast(i))) {
+            part2 = i;
+            break;
+        }
+    }
+
+    printRobots(width, height, robots.items, @intCast(part2));
 }
