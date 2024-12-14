@@ -96,8 +96,6 @@ pub fn Aoc13(comptime R: type) type {
                 }
             }
 
-            std.debug.print("{}\n", .{valid});
-
             return .{
                 .part1 = part1,
                 .part2 = part2,
