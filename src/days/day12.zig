@@ -49,7 +49,7 @@ fn findRegion(allocator: std.mem.Allocator, grid: Grid, seed: IPos) !Region {
     const region_type: u8 = grid.get(seed).?;
     var visited = std.AutoHashMap(IPos, void).init(allocator);
     var area: u32 = 0;
-    var peri: i32 = 0;
+    var perimeter: i32 = 0;
     var edges: i32 = 0;
 
     var to_visit = std.ArrayList(IPos).init(allocator);
@@ -68,7 +68,7 @@ fn findRegion(allocator: std.mem.Allocator, grid: Grid, seed: IPos) !Region {
         area += 1;
         // Perimeter increase depends on how many visited positions are next to
         // this position
-        // We also mark the neighbours as positions to visit next
+        // We also mark the neighbours as positions to visit
         var neighbours: u8 = 0;
         const deltas = [_]IPos{
             IPos{ .row = 1, .col = 0 },
@@ -81,12 +81,14 @@ fn findRegion(allocator: std.mem.Allocator, grid: Grid, seed: IPos) !Region {
                 .row = pos.row + delta.row,
                 .col = pos.col + delta.col,
             };
+            // Visit n_pos in the future
             try to_visit.append(n_pos);
             if (visited.contains(n_pos)) neighbours += 1;
         }
-        peri += 4 - 2 * @as(i32, neighbours);
+        perimeter += 4 - 2 * @as(i32, neighbours);
 
-        // Edge calculation
+        // Edge delta is a function of the eight immediate neighbours.
+        // We precompute them in a lookup table.
         const edge_delta_lut = comptime edgeDeltaLUT();
         const lut_idx = getLUTIndex(visited, pos);
         edges += edge_delta_lut[lut_idx];
@@ -97,7 +99,7 @@ fn findRegion(allocator: std.mem.Allocator, grid: Grid, seed: IPos) !Region {
     return Region{
         .coords = visited,
         .area = area,
-        .perimeter = @intCast(peri),
+        .perimeter = @intCast(perimeter),
         .edges = @intCast(edges),
     };
 }
