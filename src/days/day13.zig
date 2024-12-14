@@ -77,22 +77,26 @@ pub fn Aoc13(comptime R: type) type {
             var part1: u64 = 0;
             var part2: u64 = 0;
 
-            while (readClawMachine(R, reader) catch return error.ParseFailure) |*machine| {
-                if (machine.tokens()) |t| {
-                    part1 += t;
-                }
-                const big_machine = ClawMachine{
-                    .ax = machine.ax,
-                    .ay = machine.ay,
-                    .bx = machine.bx,
-                    .by = machine.by,
-                    .x = machine.x + 10000000000000,
-                    .y = machine.y + 10000000000000,
-                };
-                if (big_machine.tokens()) |t| {
-                    part2 += t;
+            var valid: usize = 0;
+            while (true) {
+                var machine_opt = (readClawMachine(R, reader) catch return error.ParseFailure);
+                if (machine_opt) |*machine| {
+                    if (machine.tokens()) |t| {
+                        part1 += t;
+                    }
+                    const offset = 10_000_000_000_000;
+                    machine.x += offset;
+                    machine.y += offset;
+                    if (machine.tokens()) |t| {
+                        valid += 1;
+                        part2 += t;
+                    }
+                } else {
+                    break;
                 }
             }
+
+            std.debug.print("{}\n", .{valid});
 
             return .{
                 .part1 = part1,
