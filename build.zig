@@ -44,21 +44,40 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("src/input.zig"),
     });
 
+    // Executable specific to day 14 to view robots in Christmas tree formation
+    const day14_exe = b.addExecutable(.{
+        .name = "day14",
+        .root_source_file = b.path("src/days/day14.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+
+    day14_exe.root_module.addAnonymousImport("types", .{
+        .root_source_file = b.path("src/types.zig"),
+    });
+
+    day14_exe.root_module.addAnonymousImport("input", .{
+        .root_source_file = b.path("src/input.zig"),
+    });
+
     // This declares intent for the executable to be installed into the
     // standard location when the user invokes the "install" step (the default
     // step when running `zig build`).
     b.installArtifact(exe);
+    b.installArtifact(day14_exe);
 
     // This *creates* a Run step in the build graph, to be executed when another
     // step is evaluated that depends on it. The next line below will establish
     // such a dependency.
     const run_cmd = b.addRunArtifact(exe);
+    const run_day14_cmd = b.addRunArtifact(day14_exe);
 
     // By making the run step depend on the install step, it will be run from the
     // installation directory rather than directly from within the cache directory.
     // This is not necessary, however, if the application depends on other installed
     // files, this ensures they will be present and in the expected location.
     run_cmd.step.dependOn(b.getInstallStep());
+    run_day14_cmd.step.dependOn(b.getInstallStep());
 
     // This allows the user to pass arguments to the application in the build
     // command itself, like this: `zig build run -- arg1 arg2 etc`
@@ -71,6 +90,9 @@ pub fn build(b: *std.Build) void {
     // This will evaluate the `run` step rather than the default, which is "install".
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
+
+    const day14_run_step = b.step("day14", "Run day 14 visualizer");
+    day14_run_step.dependOn(&run_day14_cmd.step);
 
     // Creates a step for unit testing. This only builds the test executable
     // but does not run it.
