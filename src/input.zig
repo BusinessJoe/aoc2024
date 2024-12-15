@@ -43,6 +43,10 @@ pub const Grid = struct {
 
         var buffer: [1024]u8 = undefined;
         while (nextLine(reader, &buffer) catch return error.ReaderFail) |line| {
+            if (line.len == 0) {
+                break;
+            }
+
             if (width) |w| {
                 if (w != line.len) {
                     return error.NonRectangular;
