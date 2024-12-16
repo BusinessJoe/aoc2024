@@ -25,6 +25,25 @@ const GridParseError = error{
 pub const IPos = struct {
     row: isize,
     col: isize,
+
+    pub fn offset(self: IPos, dr: isize, dc: isize) IPos {
+        return IPos{
+            .row = self.row + dr,
+            .col = self.col + dc,
+        };
+    }
+
+    pub fn format(
+        value: IPos,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = fmt;
+        _ = options;
+
+        try writer.print("({d}, {d})", .{ value.row, value.col });
+    }
 };
 
 pub const Grid = struct {
@@ -32,7 +51,7 @@ pub const Grid = struct {
 
     width: usize,
     height: usize,
-    elements: []const u8,
+    elements: []u8,
 
     pub fn fromReader(allocator: Allocator, reader: anytype) GridParseError!Grid {
         var elements = ArrayList(u8).init(allocator);
@@ -86,6 +105,33 @@ pub const Grid = struct {
         const col: usize = @intCast(pos.col);
         const index = row * self.width + col;
         return self.elements[index];
+    }
+
+    pub fn find(self: Grid, target: u8) ?IPos {
+        for (0..self.height) |row| {
+            for (0..self.width) |col| {
+                const pos = IPos{ .row = @intCast(row), .col = @intCast(col) };
+                if (self.get(pos).? == target) return pos;
+            }
+        }
+        return null;
+    }
+
+    pub fn set(self: *Grid, pos: IPos, value: u8) void {
+        const row: usize = @intCast(pos.row);
+        const col: usize = @intCast(pos.col);
+        const index = row * self.width + col;
+        self.elements[index] = value;
+    }
+
+    pub fn print(self: Grid) void {
+        for (0..self.height) |row| {
+            for (0..self.width) |col| {
+                const pos = IPos{ .row = @intCast(row), .col = @intCast(col) };
+                std.debug.print("{c}", .{self.get(pos).?});
+            }
+            std.debug.print("\n", .{});
+        }
     }
 };
 
